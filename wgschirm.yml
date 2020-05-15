@@ -1,0 +1,99 @@
+---
+- hosts: all
+  remote_user: pi
+  become: yes
+  vars:
+    hostname: wgschirm
+    packages:
+      - xserver-xorg
+      - x11-xserver-utils
+      - xinit
+      - openbox
+      - chromium-browser
+    timezone: Europe/Berlin
+    url: "https://wgschirm.iamjonathan.de"
+
+  tasks:
+    - name: Install initial packages
+      apt:
+        pkg:
+          - python-apt
+          - raspi-config
+        state: latest
+
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+
+    - name: Set hostname
+      shell: "raspi-config nonint do_hostname {{ hostname }}"
+
+    - name: disable bootwait
+      shell: "raspi-config nonint do_boot_wait 0"
+
+    - name: enable cli with autologin
+      shell: "raspi-config nonint do_boot_behaviour B2"
+
+    - name: Set authorized for pi
+      authorized_key:
+        user: pi
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        state: present
+
+    - name: Disable SSH password authentication
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^PasswordAuthentication"
+        line: "PasswordAuthentication no"
+        state: present
+
+    - name: Disable password authentication for root
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        state: present
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+
+    - name: Update apt
+      apt: update_cache=yes
+
+    - name: Install packages
+      apt:
+        name: "{{ packages }}"
+        install_recommends: no
+        state: latest
+
+    - name: Remove dependencies that are no longer required
+      apt:
+        autoremove: yes
+
+    - name: UFW - Allow SSH connections
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: UFW - Deny all other incoming traffic by default
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Configure Openbox autostart
+      template:
+        src: /openbox_autostart
+        dest: /etc/xdg/openbox/autostart
+        force: yes
+
+    - name: Start X automatically on boot
+      lineinfile:
+        path: ~/.bash_profile
+        state: present
+        regexp: "^[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor$"
+        line: "[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor"
+
+    - name: Rotate screen
+      lineinfile:
+        path: /boot/config.txt
+        state: present
+        regexp: "^display_rotate=1$"
+        line: "display_rotate=1"
