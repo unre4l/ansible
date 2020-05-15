@@ -1,17 +1,20 @@
-# run with ansible-playbook -i "<ip>," -e "ansible_password=<password>"  wgschirm.yml
+# run with ansible-playbook -i "<ip>," -e "ansible_python_interpreter=/usr/bin/python ansible_password=<password>" wgschirm.yml
 ---
 - hosts: all
   remote_user: pi
   become: yes
   vars:
     hostname: wgschirm
+    user: pi
     packages:
       - ufw
+      - git
       - xserver-xorg
       - x11-xserver-utils
       - xinit
       - openbox
       - chromium-browser
+      - fonts-noto-color-emoji
     timezone: Europe/Berlin
     url: "https://wgschirm.iamjonathan.de"
 
@@ -36,9 +39,9 @@
     - name: enable cli with autologin
       shell: "raspi-config nonint do_boot_behaviour B2"
 
-    - name: Set authorized for pi
+    - name: Set authorized for {{ user }}
       authorized_key:
-        user: pi
+        user: "{{ user }}"
         key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
         state: present
 
@@ -88,7 +91,7 @@
 
     - name: Start X automatically on boot
       lineinfile:
-        path: "/home/{{ remote_user }}/.bash_profile"
+        path: "/home/{{ user }}/.bash_profile"
         state: present
         regexp: "^[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor$"
         line: "[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor"
@@ -98,5 +101,25 @@
       lineinfile:
         path: /boot/config.txt
         state: present
-        regexp: "^display_rotate=1$"
-        line: "display_rotate=1"
+        regexp: "^#?display_rotate="
+        line: "display_rotate=3"
+
+    - name: clone wgschirm repo
+      git:
+        repo: "https://github.com/unre4l/wgschirm.git"
+        dest: "/home/{{ user }}/wgschirm"
+
+    - name: clone wgschirm repo
+      command: "mv /home/{{ user }}/wgschirm/pir/pir.py /home/{{ user }}/pir.py"
+
+    - name: Copy pir service config
+      template:
+        src: pir.service
+        dest: /lib/systemd/system/pir.service
+        force: yes
+
+    - name: Manage pir.service
+      service:
+        name: pir.service
+        state: started
+        enable: yes
