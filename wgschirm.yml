@@ -82,16 +82,17 @@
 
     - name: Configure Openbox autostart
       template:
-        src: /openbox_autostart
+        src: openbox_autostart
         dest: /etc/xdg/openbox/autostart
         force: yes
 
     - name: Start X automatically on boot
       lineinfile:
-        path: ~/.bash_profile
+        path: "/home/{{ remote_user }}/.bash_profile"
         state: present
         regexp: "^[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor$"
         line: "[[ -z $DISPLAY && $XDG_VTNR -eq 1 ]] && startx -- -nocursor"
+        create: yes
 
     - name: Rotate screen
       lineinfile:
