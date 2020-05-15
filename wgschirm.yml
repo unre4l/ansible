@@ -109,8 +109,8 @@
         repo: "https://github.com/unre4l/wgschirm.git"
         dest: "/home/{{ user }}/wgschirm"
 
-    - name: clone wgschirm repo
-      command: "mv /home/{{ user }}/wgschirm/pir/pir.py /home/{{ user }}/pir.py"
+    - name: copy pir.service file
+      command: "cp /home/{{ user }}/wgschirm/pir/pir.py /home/{{ user }}/pir.py"
 
     - name: Copy pir service config
       template:
@@ -122,4 +122,4 @@
       service:
         name: pir.service
         state: started
-        enable: yes
+        enabled: yes
