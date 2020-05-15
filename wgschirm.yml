@@ -1,3 +1,4 @@
+# run with ansible-playbook -i "<ip>," -e "ansible_password=<password>"  wgschirm.yml
 ---
 - hosts: all
   remote_user: pi
@@ -5,6 +6,7 @@
   vars:
     hostname: wgschirm
     packages:
+      - ufw
       - xserver-xorg
       - x11-xserver-utils
       - xinit
